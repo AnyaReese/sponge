@@ -8,9 +8,9 @@
 - 学习掌握C++的新特性
 
 二、实验内容
-- 安装配置Linux虚拟机并在其上完成本次实验。
-- 编写小程序webget，通过网络获取web页面，类似于wget。
-- 实现字节流ByteStream：
+- 安装配置 Linux 虚拟机并在其上完成本次实验。
+- 编写小程序 webget，通过网络获取 web 页面，类似于 wget。
+- 实现字节流 ByteStream：
     - 字节流可以从写入端写入，并以相同的顺序，从读取端读取；
     - 字节流是有限的，写者可以终止写入。而读者可以在读取到字节流末尾时，产生EOF标志，不再读取；
     - 支持流量控制，以控制内存的使用；
@@ -23,9 +23,9 @@
 抓取网页: 在正式进行编码工作之前，你需要对本实验第一个任务，即抓取一个网页，有更深刻的理解。
 - 在浏览器中，访问 http://cs144.keithw.org/hello 并观察结果。
 
-![20240927214748](https://raw.githubusercontent.com/AnyaReese/PicGooo/main/images/20240927214748.png?token=A246ITWBZNNXLL4YFVPRPRTG6234I)
+![alt text](img/3220103784-林子昕-lab2/image.png)
 
-- 在你的虚拟中运行telnet cs144.keithw.org http命令，它告诉telnet程序在你的计算机与另一台计算机（名为cs144.keithw.org）之间打开一个可靠的字节流，并在这台计算机运行一个特定的服务：“http”服务。
+- 在你的虚拟机中运行 telnet cs144.keithw.org http 命令，它告诉 telnet 程序在你的计算机与另一台计算机（名为 cs144.keithw.org）之间打开一个可靠的字节流，并在这台计算机运行一个特定的服务：“http”服务。
 
 ```bash
 telnet cs144.keithw.org http
@@ -69,25 +69,29 @@ Content-Type: text/html; charset=iso-8859-1
 Connection closed by foreign host.
 ```
 
+比较结果：返回结果和浏览器返回结果一致。
+
 ## Task2: 代码仓库准备工作
 
 准备工作: 从github上抓取初始代码文件并完成环境搭建。
-- 在虚拟机上，获取初始代码文件。运行
 
+> fork 了仓库到自己的 github，其他一致
+
+- 在虚拟机上，获取初始代码文件。运行
 `git clone -b lab7-startercode https://github.com/anyareese/sponge`
 - 运行 cd sponge 命令进入sponge目录。
-- 运行mkdir build命令构建build目录来编译实验代码。
-- 运行cd build命令进入build目录
-- 运行cmake ..命令建立搭建系统
-- 运行make命令编译源代码，需注意每次你对项目进行修改都需运行make命令。
+- 运行 mkdir build 命令构建 build 目录来编译实验代码。
+- 运行 cd build 命令进入 build 目录
+- 运行 cmake .. 命令建立搭建系统
+- 运行make命令编译源代码，需注意每次你对项目进行修改都需运行 make 命令。
 - 实验代码的编写以现代C++风格完成，使用最新的2011特性尽可能安全地编程。（http://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines）。
 
 ## Task3: 阅读sponge文档
 
-阅读sponge文档: sponge封装了操作系统函数，请务必在编写实验代码前仔细阅读相关的基础代码文件。
+阅读 sponge 文档: sponge 封装了操作系统函数，请务必在编写实验代码前仔细阅读相关的基础代码文件。
 - 阅读入门代码文档（https://cs144.github.io/doc/lab0）。
-- 阅读 FileDescriptor, Socket, TCPSocket以及Address这些类的文档。
-- 阅读描述了这些类的头文件，请查阅libsponge/util目录：file_descriptor.hh, socket.hh以及address.hh。
+- 阅读 FileDescriptor, Socket, TCPSocket 以及 Address 这些类的文档。
+- 阅读描述了这些类的头文件，请查阅 libsponge/util 目录：file_descriptor.hh, socket.hh 以及 address.hh。
 
 ## Task4: 编写webget
 
@@ -96,7 +100,7 @@ Connection closed by foreign host.
 - 在get_URL函数中完成实现，实现代码使用HTTP（Web）请求的格式。使用TCPSocket类以及Address类。
 - 运行 make 命令编译程序。
 - 运行 ./apps/webget cs144.keithw.org /hello 命令进行程序的测试
-- 通过上面的测试后运行 make check_webget命令进行自动测试。
+- 通过上面的测试后运行 make check_webget 命令进行自动测试。
 注意点：
   - 在HTTP中，每行必须以 “\r\n” 结尾。
   -  Connection:close 这句代码必须包含在客户端的请求中。
@@ -121,9 +125,10 @@ Connection closed by foreign host.
     // 关闭套接字连接
     sock.close();
 ```
-![20240928023752](https://raw.githubusercontent.com/AnyaReese/PicGooo/main/images/20240928023752.png?token=A246ITRE5MOWBRPJWH5CGSLG6354A)
 
-![20240928023808](https://raw.githubusercontent.com/AnyaReese/PicGooo/main/images/20240928023808.png?token=A246ITSVIEI6HLEXR2VT5NLG6355A)
+![alt text](img/3220103784-林子昕-lab2/image-2.png)
+
+![alt text](img/3220103784-林子昕-lab2/image-3.png)
 
 ## Task5: 实现ByteStream
 
@@ -235,7 +240,7 @@ size_t ByteStream::remaining_capacity() const {
 ```
 - 运行 make check_lab0 命令进行自动测试。
 
-![20240928025124](https://raw.githubusercontent.com/AnyaReese/PicGooo/main/images/20240928025124.png?token=A246ITUPLGNCK7DV6ITNXILG637O2)
+![alt text](img/3220103784-林子昕-lab2/image-4.png)
 
 ## 实验处理和数据记录
 
