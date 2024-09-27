@@ -8,6 +8,9 @@
 #include <netdb.h>
 #include <stdexcept>
 #include <system_error>
+#include <array>
+#include <string>
+#include <utility>
 
 using namespace std;
 
@@ -87,9 +90,9 @@ Address::Address(const string &ip, const uint16_t port)
     : Address(ip, ::to_string(port), make_hints(AI_NUMERICHOST | AI_NUMERICSERV, AF_INET)) {}
 
 // accessors
-pair<string, uint16_t> Address::ip_port() const {
-    array<char, NI_MAXHOST> ip{};
-    array<char, NI_MAXSERV> port{};
+std::pair<std::string, uint16_t> Address::ip_port() const {
+    std::array<char, NI_MAXHOST> ip{};
+    std::array<char, NI_MAXSERV> port{};
 
     const int gni_ret =
         getnameinfo(_address, _size, ip.data(), ip.size(), port.data(), port.size(), NI_NUMERICHOST | NI_NUMERICSERV);
@@ -97,7 +100,7 @@ pair<string, uint16_t> Address::ip_port() const {
         throw tagged_error(gai_error_category(), "getnameinfo", gni_ret);
     }
 
-    return {ip.data(), stoi(port.data())};
+    return std::make_pair(std::string(ip.data()), static_cast<uint16_t>(std::stoi(port.data())));
 }
 
 string Address::to_string() const {

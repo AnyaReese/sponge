@@ -10,12 +10,11 @@
 //! and then no more bytes can be written.
 class ByteStream {
   private:
-    // Your code here -- add private members as necessary.
-
-    // Hint: This doesn't need to be a sophisticated data structure at
-    // all, but if any of your tests are taking longer than a second,
-    // that's a sign that you probably want to keep exploring
-    // different approaches.
+    size_t _capacity;          // 流的总容量
+    std::string _buffer;       // 用于存储数据的缓冲区
+    size_t _bytes_written{0};  // 已写入的字节数
+    size_t _bytes_read{0};     // 已读取的字节数
+    bool _input_ended{false};  // 输入是否结束的标志
 
     bool _error{};  //!< Flag indicating that the stream suffered an error.
 
