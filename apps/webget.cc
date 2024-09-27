@@ -12,13 +12,32 @@ void get_URL(const string &host, const string &path) {
     // You will need to connect to the "http" service on
     // the computer whose name is in the "host" string,
     // then request the URL path given in the "path" string.
+    
+    // 创建一个TCP套接字并连接到指定的主机和HTTP服务
+    TCPSocket sock;
+    sock.connect(Address(host, "http"));
+
+    // 发送HTTP GET请求
+    sock.write("GET " + path + " HTTP/1.1\r\n");
+    sock.write("Host: " + host + "\r\n");
+    sock.write("Connection: close\r\n");
+    sock.write("\r\n");
+
+    // 读取并打印服务器的响应
+    while (!sock.eof()) {
+        cout << sock.read();
+    }
+
+    // 关闭套接字连接
+    sock.close();
 
     // Then you'll need to print out everything the server sends back,
     // (not just one call to read() -- everything) until you reach
     // the "eof" (end of file).
 
-    cerr << "Function called: get_URL(" << host << ", " << path << ").\n";
-    cerr << "Warning: get_URL() has not been implemented yet.\n";
+    // cerr << "Function called: get_URL(" << host << ", " << path << ").\n";
+    // cerr << "Warning: get_URL() has not been implemented yet.\n";
+
 }
 
 int main(int argc, char *argv[]) {
