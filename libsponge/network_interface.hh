@@ -7,6 +7,8 @@
 
 #include <optional>
 #include <queue>
+#include <list>
+#include <map>
 
 //! \brief A "network interface" that connects IP (the internet layer, or network layer)
 //! with Ethernet (the network access layer, or link layer).
@@ -29,8 +31,35 @@
 //! the network interface passes it up the stack. If it's an ARP
 //! request or reply, the network interface processes the frame
 //! and learns or replies as necessary.
+
+using namespace std;
+
 class NetworkInterface {
   private:
+
+    //! \brief An entry in the ARP table
+    struct ARPEntry {
+        EthernetAddress ethernet_address;
+        size_t last_seen;
+    };
+
+    //! ARP table, mapping IP addresses to Ethernet addresses
+    map<uint32_t, ARPEntry> _arp_table{};
+
+    //! ARP table timeout in milliseconds
+    static constexpr size_t ARP_TIMEOUT_MS = 30 * 1000;
+
+    //! ARP table cleanup interval in milliseconds
+    static constexpr size_t ARP_CLEANUP_INTERVAL_MS = 5 * 1000;
+
+    //！ARP awaiting response, some will be cleaned up after a timeout
+    // IP address => time when the ARP request was sent
+    map<uint32_t, size_t> _waiting_arp_response{};
+    
+    //! Ip datagram awaiting response, some will be cleaned up after a timeout
+    // IP address => IP datagram
+    list<pair<Address, InternetDatagram>> _waiting_ip_response{};
+
     //! Ethernet (known as hardware, network-access-layer, or link-layer) address of the interface
     EthernetAddress _ethernet_address;
 
@@ -38,14 +67,14 @@ class NetworkInterface {
     Address _ip_address;
 
     //! outbound queue of Ethernet frames that the NetworkInterface wants sent
-    std::queue<EthernetFrame> _frames_out{};
+    queue<EthernetFrame> _frames_out{};
 
   public:
     //! \brief Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer) addresses
     NetworkInterface(const EthernetAddress &ethernet_address, const Address &ip_address);
 
     //! \brief Access queue of Ethernet frames awaiting transmission
-    std::queue<EthernetFrame> &frames_out() { return _frames_out; }
+    queue<EthernetFrame> &frames_out() { return _frames_out; }
 
     //! \brief Sends an IPv4 datagram, encapsulated in an Ethernet frame (if it knows the Ethernet destination address).
 
@@ -58,7 +87,7 @@ class NetworkInterface {
     //! If type is IPv4, returns the datagram.
     //! If type is ARP request, learn a mapping from the "sender" fields, and send an ARP reply.
     //! If type is ARP reply, learn a mapping from the "sender" fields.
-    std::optional<InternetDatagram> recv_frame(const EthernetFrame &frame);
+    optional<InternetDatagram> recv_frame(const EthernetFrame &frame);
 
     //! \brief Called periodically when time elapses
     void tick(const size_t ms_since_last_tick);
