@@ -37,14 +37,16 @@ void NetworkInterface::send_datagram(const InternetDatagram &dgram, const Addres
 
     // create an ARP request for the next hop IP address
     const auto &arp_iter = _arp_table.find(next_hop_ip);
-    // if the next hop IP address is not in the ARP table, send an ARP request
-    if (arp_iter == _arp_table.end()) {
+
+    // if the next hop IP address is not in the ARP table and we're not already waiting for an ARP response
+    if (arp_iter == _arp_table.end() && (_waiting_arp_response.find(next_hop_ip) == _waiting_arp_response.end())) {
         ARPMessage arp_request;
         arp_request.opcode = ARPMessage::OPCODE_REQUEST;
         arp_request.sender_ethernet_address = _ethernet_address;
         arp_request.sender_ip_address = _ip_address.ipv4_numeric();
         arp_request.target_ethernet_address = {};
         arp_request.target_ip_address = next_hop_ip;
+
         if (DEBUG) {
             cerr << "\033[1;33mDEBUG: Sending ARP request for IP address " << next_hop_ip << "\033[0m\n";
         }
@@ -65,7 +67,10 @@ void NetworkInterface::send_datagram(const InternetDatagram &dgram, const Addres
 
         // remember the IP datagram we're waiting to send
         _waiting_ip_response.push_back({next_hop, dgram});
-    } else {
+    } else if (arp_iter == _arp_table.end() && (_waiting_arp_response.find(next_hop_ip) != _waiting_arp_response.end())) { // if the next hop IP address is not in the ARP table but we're already waiting for an ARP response
+        // remember the IP datagram we're waiting to send
+        _waiting_ip_response.push_back({next_hop, dgram});
+    } else { // if the next hop IP address is in the ARP table
         // create an Ethernet frame with the known Ethernet address
         EthernetFrame frame;
         frame.header().src = _ethernet_address;
@@ -175,11 +180,15 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void NetworkInterface::tick(const size_t ms_since_last_tick) {
     // DUMMY_CODE(ms_since_last_tick);
-    
     // delete ARP entries that have timed out
     for (auto it = _arp_table.begin(); it != _arp_table.end();) {
         it->second.last_seen += ms_since_last_tick;
         if (it->second.last_seen >= ARP_TIMEOUT_MS) {
+
+            if (DEBUG) {
+                cerr << "\033[1;33mDEBUG: ARP table entry for IP " << it->first << " has timed out\033[0m\n";
+            }
+
             it = _arp_table.erase(it);
         } else {
             ++it;
@@ -190,6 +199,11 @@ void NetworkInterface::tick(const size_t ms_since_last_tick) {
     for (auto it = _waiting_arp_response.begin(); it != _waiting_arp_response.end();) {
         it->second += ms_since_last_tick;
         if (it->second >= ARP_CLEANUP_INTERVAL_MS) {
+
+            if (DEBUG) {
+                cerr << "\033[1;33mDEBUG: Resending ARP request for IP " << it->first << "\033[0m\n";
+            }
+
             // resend the ARP request
             ARPMessage arp_request;
             arp_request.opcode = ARPMessage::OPCODE_REQUEST;
@@ -199,14 +213,14 @@ void NetworkInterface::tick(const size_t ms_since_last_tick) {
             arp_request.target_ip_address = it->first;
 
             // serialize the ARP request and create an Ethernet frame
-            EthernetFrame frame;
-            frame.header().dst = ETHERNET_BROADCAST;
-            frame.header().src = _ethernet_address;
-            frame.header().type = EthernetHeader::TYPE_ARP;
-            frame.payload() = arp_request.serialize();
+            EthernetFrame eth_frame;
+            eth_frame.header().dst = ETHERNET_BROADCAST;
+            eth_frame.header().src = _ethernet_address;
+            eth_frame.header().type = EthernetHeader::TYPE_ARP;
+            eth_frame.payload() = arp_request.serialize();
 
             // push the Ethernet frame onto the outbound queue
-            _frames_out.push(frame);
+            _frames_out.push(eth_frame);
             it->second = 0;
         } else {
             ++it;
