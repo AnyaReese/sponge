@@ -147,34 +147,24 @@ void NetworkInterface::send_datagram(const InternetDatagram &dgram, const Addres
 ```
 
 2. 补全 `recv_frame()` 方法：
-    这段代码的功能是处理接收到的以太网帧 (`recv_frame` 方法)，根据帧的类型和内容做相应处理。
-1. **帧过滤**：
-   - 检查以太网帧的目标地址 (`dst`) 是否是本机地址或广播地址。如果不是，直接丢弃，返回空值。
-2. **处理 ARP 报文**：
-   - 如果帧类型为 ARP：
-     - 解析 ARP 消息，并提取发送方和目标方的 IP 和 MAC 地址。
-     - 检查 ARP 报文是否为：
-       - **ARP 请求**：目标 IP 是本机 IP，操作码为 `REQUEST`。
-       - **ARP 回复**：目标 MAC 是本机 MAC，操作码为 `REPLY`。
-     - 如果是 ARP 请求：
-       - 构建并发送 ARP 回复，包含本机的 IP 和 MAC 地址。
-     - 如果是 ARP 请求或回复：
-       - 更新 ARP 表，将发送方 IP 和 MAC 地址映射记录下来。
-       - 检查是否有等待发送的 IP 数据报（之前因未知 MAC 地址而缓存），如果有，取出并发送。
-       - 从等待 ARP 回复的列表中删除对应的 IP 地址。
-3. **处理 IPv4 数据报**：
-   - 如果帧类型为 IPv4：
-     - 解析 IPv4 数据报，如果解析成功，返回该数据报。
-     - 如果解析失败，返回空值。
+    1. **帧过滤**：
+    - 检查以太网帧的目标地址 (`dst`) 是否是本机地址或广播地址。如果不是，直接丢弃，返回空值。
+    2. **处理 ARP 报文**：
+    - 如果帧类型为 ARP：
+        - 解析 ARP 消息，并提取发送方和目标方的 IP 和 MAC 地址。
+        - 如果是 ARP 请求：构建并发送 ARP 回复，包含本机的 IP 和 MAC 地址。
+        - 更新 ARP 表，将发送方 IP 和 MAC 地址映射记录下来。
+        - 检查是否有等待发送的 IP 数据报（之前因未知 MAC 地址而缓存），如果有，取出并发送。
+        - 从等待 ARP 回复的列表中删除对应的 IP 地址。
+    3. **处理 IPv4 数据报**：
+    - 如果帧类型为 IPv4：
+        - 解析 IPv4 数据报，如果解析成功，返回该数据报。
+        - 如果解析失败，返回空值。
 
 ```cpp
 optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &frame) {
-    // DUMMY_CODE(frame);
     // filter out frames not addressed to us
     if (frame.header().dst != _ethernet_address && frame.header().dst != ETHERNET_BROADCAST) {
-        if (DEBUG) {
-            cerr << "\033[1;33mDEBUG: Frame not addressed to us\033[0m\n";
-        }
         return {};
     }
 
@@ -260,7 +250,6 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame &fra
 ```cpp
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void NetworkInterface::tick(const size_t ms_since_last_tick) {
-    // DUMMY_CODE(ms_since_last_tick);
     // delete ARP entries that have timed out
     for (auto it = _arp_table.begin(); it != _arp_table.end();) {
         it->second.last_seen += ms_since_last_tick;
@@ -405,12 +394,10 @@ void Router::route_one_datagram(InternetDatagram &dgram) {
 
 **2. 虽然在此次实验不需要考虑这种情况，但是当 network interface 发送一个 ARP 请求后如果没收到一个应答该怎么解决？请思考。**
 
-在真实网络环境中，若发送 ARP 请求后未收到应答，可以采取以下策略：
-
 - **重试机制**：可以在超时后重新发送 ARP 请求，但重试次数应有限制（如重试 3 次）。若多次重试后依然未收到回复，可以认为目标主机不可达。
-- **返回错误或丢弃数据报**：若超过重试次数仍未收到应答，可以丢弃等待发送的数据报，并向上层应用返回错误（如 `Host Unreachable` 错误），提示目标主机无法访问。
+- **返回错误或丢弃数据报**：若超过重试次数仍未收到应答，可以丢弃等待发送的数据报，并向上层应用返回错误，提示目标主机无法访问。
 - **缓存失败结果并记录时间**：可以缓存未成功解析的 IP 地址，并记录缓存时间，避免频繁发送请求造成网络拥堵。在一段时间（如 5 分钟）内对同一 IP 地址不再重复发送 ARP 请求。
-- **触发上层协议处理**：在 TCP/IP 协议栈中，若 ARP 解析失败，通常会交由上层协议（如 ICMP 协议）处理，可能会发送 `ICMP Destination Unreachable` 报文，通知源主机该目标不可达。
+- 查阅资料后，发现在一些协议的处理中，可以通过**触发上层协议处理**解决：在 TCP/IP 协议栈中，若 ARP 解析失败，通常会交由上层协议（如 ICMP 协议）处理，可能会发送 `ICMP Destination Unreachable` 报文，通知源主机该目标不可达。
 
 **3. 请描述一下你为了记录路由表所建立的数据结构？为什么？**
 
@@ -439,7 +426,7 @@ vector<RouterEntry> _router_table{};
 
 #### 1. **ARP 协议实现的收获**
 
-在实验过程中，对多个 IP 数据报等待发送但目标 MAC 地址未知的情况，我理解到了协议设计中的**异步特性**：发送 ARP 请求后不立即等待响应，而是将数据报暂存，等待收到 ARP 回复再处理。这种设计既可以提升网络通信的效率，又避免了由于同步等待导致的阻塞和延迟。通过 `recv_frame()` 方法处理 ARP 报文时，还让我学会了如何动态更新 ARP 表，并通过缓存管理超时条目，体现了协议中对资源高效利用的要求。
+在实验过程中，对多个 IP 数据报等待发送但目标 MAC 地址未知的情况，我理解到了协议设计中的**异步特性**：发送 ARP 请求后不立即等待响应，而是将数据报暂存，等待收到 ARP 回复再处理。这种设计既可以提升网络通信的效率，又避免了由于同步等待导致的阻塞和延迟。
 
 #### 2. **简易路由器的设计体会**
 
@@ -448,4 +435,4 @@ vector<RouterEntry> _router_table{};
 
 #### 3. **编程调试中的思考**
 
-实验中最大的挑战在于 `send_datagram()` 和 `recv_frame()` 方法的实现与调试。尤其是在处理 ARP 请求与回复时，必须考虑多种边界情况：例如同时收到多个 ARP 请求、ARP 表中条目过期、缓存的数据报因迟迟收不到回复而需要重发等。调试过程中，通过添加大量的 `DEBUG` 输出（DEBUG 代码没有放在报告里，在我的代码附件中可以通过宏定义 DEBUG 开关），我逐渐培养了细致分析问题的能力，也认识到了完善日志信息对于排查复杂网络问题的重要性。
+我遇到的困难主要在 `send_datagram()` 和 `recv_frame()` 方法的实现与调试。尤其是在处理 ARP 请求与回复时，必须考虑几种边界情况：例如同时收到多个 ARP 请求、ARP 表中条目过期、缓存的数据报因迟迟收不到回复而需要重发等。调试过程中，通过添加大量的 `DEBUG` 输出（DEBUG 代码没有放在报告里，在我的代码附件中可以通过宏定义 DEBUG 开关），我逐渐培养了细致分析问题的能力，也认识到了完善日志信息对于排查复杂网络问题的重要性。
