@@ -49,35 +49,52 @@
 
 - 实现 TCPSender: TCPSender需将序列号、SYN标志、有效负载和FIN标志组成segment发送。然而，TCPSender在收到TCPReceiver发送的ack包时只需读取确认号和窗口大小。实现TCPSender接口中的方法，具体实现思路见PPT。注意，在开始代码实现前，这里有一些关于超时重传的描述，请仔细阅读：
     - “时间流逝”：实验中这一概念是通过调用 tick 方法实现的，而不是通过获取实际时间实现的，例如调用tick(5)，说明过去了5ms。
-    - 超时重传时间 RTO：RTO值会随着网络环境的变化而变化。当TCPSender被构造时，会传入RTO的初始值（RTO保存在_initial_retransmission_timeout）
+    - 超时重传时间 RTO：RTO 值会随着网络环境的变化而变化。当 TCPSender 被构造时，会传入 RTO 的初始值（RTO保存在_initial_retransmission_timeout）
     - 重传计时器：和RTO比较，判断是否超时
     - 连续重传计数器：记录连续重传次数，过多的重传次数可能意味着网络的中断
         
-<font color="red">实现TCPReceiver和TCPSender后，运行make check_lab2命令以检查代码的正确性。</font>
+<font color="red">实现 TCPReceiver 和 TCPSender 后，运行 `make check_lab2` 命令以检查代码的正确性。</font>
 
 - 温馨提示: 当你在开发代码的时候，可能会遇到无法解决的问题，下面给出解决的办法。
-    - 运行cmake .. -DCMAKE_BUILD_TYPE=RelASan命令配置build目录，使编译器能够检测内存错误和未定义的行为并给你很好的诊断。
-    - 你还可以使用valgrind工具。
-    - 你也可以运行cmake .. -DCMAKE_BUILD_TYPE=Debug命令配置并使用GNU调试器（gdb）。
-    - 你可以运行make clean和cmake .. -DCMAKE_BUILD_TYPE=Release命令重置构建系统。
-    - 如果你不知道如何修复遇到的问你题，你可以运行rm -rf build命令删除build目录，创建一个新的build目录并重新运行cmake..命令。
+    - 运行 `cmake .. -DCMAKE_BUILD_TYPE=RelASan` 命令配置 build 目录，使编译器能够检测内存错误和未定义的行为并给你很好的诊断。
+    - 你还可以使用 valgrind 工具。
+    - 你也可以运行 `cmake .. -DCMAKE_BUILD_TYPE=Debug` 命令配置并使用GNU调试器（gdb）。
+    - 你可以运行 `make clean` 和 `cmake .. -DCMAKE_BUILD_TYPE=Release` 命令重置构建系统。
+    - 如果你不知道如何修复遇到的问你题，你可以运行 `rm -rf build` 命令删除 build 目录，创建一个新的 build 目录并重新运行 `cmake..` 命令。
 
 
 ## 五、实验数据记录和处理
 
-以下实验记录均需结合屏幕截图（截取源代码或运行结果），进行文字标注（看完请删除本句）。
+### 实现 WrappingInt32 的关键代码截图
 
-- 实现WrappingInt32的关键代码截图
+1. 将 64 位的绝对序列号（absolute sequence number）转换为一个 32 位的环绕整数序列号（WrappingInt32）。
+
+```cpp
+WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
+    WrappingInt32 relative_sequence_number = isn + static_cast<uint32_t>(n);
+    return WrappingInt32{relative_sequence_number};
+}
+```
+
+2. 将一个 32 位的环绕整数序列号（WrappingInt32）转换为一个 64 位的绝对序列号（absolute sequence number）。
+
+````cpp
+uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
+    const constexpr uint64_t INT32_RANGE = 1l << 32;
+    // uint32_t offset = static_cast<uint32_t>(n.raw_value() - isn.raw_value());
+    uint32_t offset = n - isn;
+    uint64_t delta = checkpoint > offset ? checkpoint - offset : 0;
+    uint64_t wrap_num = (delta + (INT32_RANGE >> 1)) / INT32_RANGE;
+    return wrap_num * INT32_RANGE + offset;
+}
+```
+
+### 测试Wrapping的运行截图
 
 
 
 
-- 测试Wrapping的运行截图
-
-
-
-
-- 实现TCPReceiver的关键代码截图
+### 实现TCPReceiver的关键代码截图
 
 
 
@@ -91,7 +108,7 @@
 
 
 
-- 运行make check_lab2命令的测试结果展示
+### 运行make check_lab2命令的测试结果展示
 
 
 
@@ -101,21 +118,21 @@
 
 根据你编写的程序运行效果，分别解答以下问题（看完请删除本句）：
 
-- 通过代码，请描述TCPSender是如何发送出一个segment的？
+### 通过代码，请描述TCPSender是如何发送出一个segment的？
 
 
 
-- 请用自己的理解描述一下TCPSender超时重传的整个流程。
-
-
-
-
-- 请描述一下你为了重传未被确认的段建立的数据结构？为什么？
+### 请用自己的理解描述一下TCPSender超时重传的整个流程。
 
 
 
 
-- 请思考为什么TCPSender实现中有一个发送空段的方法，能描述一下你是怎么理解的吗？
+### 请描述一下你为了重传未被确认的段建立的数据结构？为什么？
+
+
+
+
+### 请思考为什么TCPSender实现中有一个发送空段的方法，能描述一下你是怎么理解的吗？
 
 
 
