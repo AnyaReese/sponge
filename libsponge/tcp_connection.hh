@@ -22,6 +22,9 @@ class TCPConnection {
     bool _linger_after_streams_finish{true};
     bool _is_active{true};
 
+    //! Time since the last segment was received (in milliseconds)
+    size_t _time_since_last_segment_received_ms{0};
+
   public:
     //! \name "Input" interface for the writer
     //!@{
