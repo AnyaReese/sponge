@@ -83,6 +83,7 @@ void TCPSender::fill_window() {
 //! \param window_size The remote receiver's advertised window size
 void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) {
     size_t abs_seqno;
+    // if the ackno is less than the initial sequence number, ignore it
     if (unwrap(ackno, _isn, _next_seqno) > _next_seqno) {
         return;
     } else {
