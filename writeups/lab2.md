@@ -4,53 +4,53 @@
 
 ## 一、实验目的：
 
-- 学习掌握TCP的工作原理
+- 学习掌握 TCP 的工作原理
 - 学习掌握流重组器的工作原理
-- 学习掌握TCP receiver和TCP sender的相关知识
+- 学习掌握 TCP receiver 和 TCP sender 的相关知识
 
 ## 二、实验内容
 
 - 实现流重组器，一个将字节流的字串或小段按照正确顺序来拼接回连续字节流的模块。
-- 实现TCPReceiver。
-    - 接收TCPsegment；
+- 实现 TCPReceiver。
+    - 接收 TCPsegment；
     - 重新组装字节流；
     - 确定应该发回发送者的信号，以进行数据确认和流量控制。
-- 实现TCPSender：
-    - 将ByteStream中的数据以TCP报文形式持续发送给接收者；
-    - 处理TCPReceiver传入的ackno和window size，以追踪接收者当前的接收状态，以及检测丢包的情况；
-    - 若经过一个超时时间仍然没有接收到TCPReceiver发送的ack包，则重传。
+- 实现 TCPSender：
+    - 将 ByteStream 中的数据以 TCP 报文形式持续发送给接收者；
+    - 处理 TCPReceiver 传入的 ackno 和 window size，以追踪接收者当前的接收状态，以及检测丢包的情况；
+    - 若经过一个超时时间仍然没有接收到 TCPReceiver 发送的 ack 包，则重传。
     - 发送一个空段
 
 ## 三、主要仪器设备
 
-- 联网的PC机
-- Linux虚拟机
+- 联网的 PC 机
+- Linux 虚拟机
 
 ## 四、操作方法与实验步骤
 
-- 理解流重组器StreamReassembler接口法：
-- 处理索引问题: 在开始实现receiver和sender前，你需要先处理索引的问题。在流重组器中，每个字节都有一个64位的流索引，流中的第一个字节索引总是0。64位索引足够大，我们可以将其视为不会溢出。然而在TCP报头中，流中的每个字节索引不是用64位索引表示的，而是用32位的序列号表示。这增加了三个复杂性：
-    1.你需要考虑到32位的索引的大小问题：通过TCP发送的字节流长度往往没有限制，2^32不是很大。一旦32位的序列号计数到2^32 - 1，流中下一个自己的序列号将为0（容易溢出）。
-    2.TCP序列号从一个随机值开始：TCP试图确保序列号不会被猜测，也不太可能重复。所以流的序列号不是从零开始的。流中的第一个序列号是一个32位的随机数字，称为初始序列号(ISN)。这是表示SYN(流的开始)的序列号。其余的序列号在此之后增加: 数据的第一个字节将具有ISN+1的序列号(mod 2^32)，第二个字节将具有ISN+2 (mod 2^32)...
-    3.逻辑开始和结束各自占用一个序列号: 除了确保接收所有数据字节外，TCP还确保可靠地接收流的开始和结束。因此，在TCP中，SYN(流开始)和FIN(流结束)控制标志也被分配序列号。SYN标志占用的序列号是ISN，流中的每个字节数据也占用一个序列号。SYN和FIN不是流本身的一部分，也不是“字节”—它们代表字节流本身的开始和结束。
+- 理解流重组器 StreamReassembler 接口法：
+- 处理索引问题: 在开始实现 receiver 和 sender 前，你需要先处理索引的问题。在流重组器中，每个字节都有一个 64 位的流索引，流中的第一个字节索引总是 0。64 位索引足够大，我可以将其视为不会溢出。然而在 TCP 报头中，流中的每个字节索引不是用 64 位索引表示的，而是用 32 位的序列号表示。这增加了三个复杂性：
+    1. 你需要考虑到 32 位的索引的大小问题：通过 TCP 发送的字节流长度往往没有限制 $2^{32}$ 不是很大。一旦 32 位的序列号计数到 $2^{32} - 1$，流中下一个自己的序列号将为 0（容易溢出）。
+    2. TCP 序列号从一个随机值开始：TCP 试图确保序列号不会被猜测，也不太可能重复。所以流的序列号不是从零开始的。流中的第一个序列号是一个 32 位的随机数字，称为初始序列号 (ISN)。这是表示 SYN(流的开始)的序列号。其余的序列号在此之后增加: 数据的第一个字节将具有 $ISN+1$ 的序列号 (mod $2^{32}$)，第二个字节将具有 $ISN+2$ (mod $2^{32}$)...
+    3. 逻辑开始和结束各自占用一个序列号: 除了确保接收所有数据字节外，TCP 还确保可靠地接收流的开始和结束。因此，在 TCP 中，SYN(流开始)和 FIN(流结束)控制标志也被分配序列号。SYN 标志占用的序列号是 ISN，流中的每个字节数据也占用一个序列号。SYN 和 FIN 不是流本身的一部分，也不是“字节”—它们代表字节流本身的开始和结束。
 
-综上，有三种序列号，tcp中使用的序列号seqno（32位），流重组器StreamReassembler中使用的序列号stream index（64位），为了二者转换，又引入一种序列号 absolute seqno（64位）。你可以通过下面这张图来理解：
+综上，有三种序列号，tcp 中使用的序列号 seqno（32 位），流重组器 StreamReassembler 中使用的序列号 stream index（64 位），为了二者转换，又引入一种序列号 absolute seqno（64 位）。你可以通过下面这张图来理解：
 
 ![alt text](img/lab2/image.png)
 
-绝对序列号和流索引之间的转换只需加减1即可，但是序列号和绝对序列号之间的转换有点困难，混淆两者可能会产生棘手的错误。为了防止这些错误，我们将用自定义类型WrappingInt32表示序列号，并编写它和绝对序列号（用uint64_t表示）之间的转换，实现wrapping_intergers.hh中提供的方法：
+绝对序列号和流索引之间的转换只需加减 1 即可，但是序列号和绝对序列号之间的转换有点困难，混淆两者可能会产生棘手的错误。为了防止这些错误，我们将用自定义类型 WrappingInt32 表示序列号，并编写它和绝对序列号（用 uint64_t 表示）之间的转换，实现 wrapping_intergers.hh 中提供的方法：
 
 ![alt text](img/lab2/image-1.png)
 
 <font color="red">完成代码编写后，在 build 目录运行 `ctest -R wrap` 命令对 WrappingInt32 进行测试。</font>
 
 - 实现 TCPReceiver
-在开始实现receiver的代码前，请复习TCPSegment和TCPHeader的文档。你可能对length_in_sequence_space()方法感兴趣，该方法计算一个段占用多少序列号（包括SYN和FIN标志的序列号）。实现TCPReceiver接口中的方法，具体实现思路参考PPT。
+在开始实现 receiver 的代码前，请复习 TCPSegment 和 TCPHeader 的文档。你可能对 length_in_sequence_space() 方法感兴趣，该方法计算一个段占用多少序列号（包括 SYN 和 FIN 标志的序列号）。实现 TCPReceiver 接口中的方法，具体实现思路参考 PPT。
 
-- 实现 TCPSender: TCPSender需将序列号、SYN标志、有效负载和FIN标志组成segment发送。然而，TCPSender在收到TCPReceiver发送的ack包时只需读取确认号和窗口大小。实现TCPSender接口中的方法，具体实现思路见PPT。注意，在开始代码实现前，这里有一些关于超时重传的描述，请仔细阅读：
-    - “时间流逝”：实验中这一概念是通过调用 tick 方法实现的，而不是通过获取实际时间实现的，例如调用tick(5)，说明过去了5ms。
-    - 超时重传时间 RTO：RTO 值会随着网络环境的变化而变化。当 TCPSender 被构造时，会传入 RTO 的初始值（RTO保存在_initial_retransmission_timeout）
-    - 重传计时器：和RTO比较，判断是否超时
+- 实现 TCPSender: TCPSender 需将序列号、SYN 标志、有效负载和 FIN 标志组成 segment 发送。然而，TCPSender 在收到 TCPReceiver 发送的 ack 包时只需读取确认号和窗口大小。实现 TCPSender 接口中的方法，具体实现思路见 PPT。注意，在开始代码实现前，这里有一些关于超时重传的描述，请仔细阅读：
+    - “时间流逝”：实验中这一概念是通过调用 tick 方法实现的，而不是通过获取实际时间实现的，例如调用 tick(5)，说明过去了 5ms。
+    - 超时重传时间 RTO：RTO 值会随着网络环境的变化而变化。当 TCPSender 被构造时，会传入 RTO 的初始值（RTO 保存在 _initial_retransmission_timeout）
+    - 重传计时器：和 RTO 比较，判断是否超时
     - 连续重传计数器：记录连续重传次数，过多的重传次数可能意味着网络的中断
         
 <font color="red">实现 TCPReceiver 和 TCPSender 后，运行 `make check_lab2` 命令以检查代码的正确性。</font>
@@ -58,9 +58,9 @@
 - 温馨提示: 当你在开发代码的时候，可能会遇到无法解决的问题，下面给出解决的办法。
     - 运行 `cmake .. -DCMAKE_BUILD_TYPE=RelASan` 命令配置 build 目录，使编译器能够检测内存错误和未定义的行为并给你很好的诊断。
     - 你还可以使用 valgrind 工具。
-    - 你也可以运行 `cmake .. -DCMAKE_BUILD_TYPE=Debug` 命令配置并使用GNU调试器（gdb）。
+    - 你也可以运行 `cmake .. -DCMAKE_BUILD_TYPE=Debug` 命令配置并使用 GNU 调试器（gdb）。
     - 你可以运行 `make clean` 和 `cmake .. -DCMAKE_BUILD_TYPE=Release` 命令重置构建系统。
-    - 如果你不知道如何修复遇到的问你题，你可以运行 `rm -rf build` 命令删除 build 目录，创建一个新的 build 目录并重新运行 `cmake..` 命令。
+    - 如果你不知道如何修复遇到的问题，你可以运行 `rm -rf build` 命令删除 build 目录，创建一个新的 build 目录并重新运行 `cmake ..` 命令。
 
 
 ## 五、实验数据记录和处理
@@ -281,7 +281,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
 
     // reset the consecutive retransmissions count
     _consecutive_retransmissions_count = 0;
-    // uodate the last window size and fill the window
+    // update the last window size and fill the window
     _last_window_size = window_size;
     fill_window();
 }
@@ -309,7 +309,7 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
 }
 ```
 
-- 在 `tcp_sender.cc` 中，实现 `TCPSender::empty` 方法。
+- 在 `tcp_sender.cc` 中，实现 `TCPSender::send_empty_segment` 方法。
     1. 发送一个空段，序列号为下一个序列号。
 
 ```cpp
@@ -357,7 +357,7 @@ if (_stream.eof() && !_fin_flag && (payload.size() + _outgoing_bytes < curr_wind
 ```cpp
 _segments_out.push(segment);
 _outgoing_map.insert(make_pair(_next_seqno, segment));
- _outgoing_bytes += segment.length_in_sequence_space();
+_outgoing_bytes += segment.length_in_sequence_space();
 _next_seqno += segment.length_in_sequence_space();
 ```
 
@@ -366,7 +366,7 @@ _next_seqno += segment.length_in_sequence_space();
 1. 时间累计：每次 tick 调用会累积时间，检查是否达到超时时间。
 2. 超时判断：如果有未确认的段且超时，则触发重传逻辑。
 3. 拥塞控制：根据接收窗口大小判断是否进行指数退避：
-    - 窗口非零：可能是网络拥塞，进入指数退避，增大超时时间,恢复初始超时时间。
+    - 窗口非零：可能是网络拥塞，进入指数退避，增大超时时间, 恢复初始超时时间。
     - 窗口为零：无需拥塞控制，恢复初始超时时间。
 4. 重置计时器：重传后清空 `_timecount`，重新计时。
 5. 重传段：将最早未确认的段重新加入发送队列 `_segments_out`。
@@ -399,6 +399,3 @@ size_t _outgoing_bytes{0};
 ## 七、实验数据记录和处理
 
 助教的实验课讲的原理以及每个函数部分的实现方法和逻辑都非常细致和清晰，伟大
-
-
-
