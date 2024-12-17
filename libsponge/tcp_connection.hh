@@ -24,6 +24,37 @@ class TCPConnection {
 
     //! Time since the last segment was received (in milliseconds)
     size_t _time_since_last_segment_received_ms{0};
+    
+    /**
+     * @brief Sets the TCP connection to the RST (reset) state.
+     * This method is invoked to reset the TCP connection when an error occurs 
+     * or when a forced termination is needed.
+     * @param send_rst If true, a TCP segment with the RST flag is created and added to the outgoing segment queue.
+     * @details This method performs the following actions:
+     * - Sends an RST segment to the peer (if `send_rst` is true).
+     * - Marks the receive and send byte streams as errored.
+     * - Prevents the connection from lingering after termination (`_linger_after_streams_finish` is set to false).
+     * - Marks the connection as inactive (`_is_active` is set to false).
+     * @note Sending an RST segment is the standard method to forcefully terminate
+     *       a TCP connection.
+     */
+    void set_rst_state(bool send_rst);
+
+    /**
+     * @brief Pushes pending TCP segments to the outgoing queue, adding local ACK and window size.
+     * This method retrieves pending TCP segments from the sender (`_sender`), appends 
+     * the local receiver's acknowledgment number (ACK) and window size to the segment headers, 
+     * and pushes the updated segments into the `_segments_out` queue for transmission.
+     * @details
+     * - Extracts pending segments from the `_sender`.
+     * - If the receiver has a valid ACK number, the ACK flag, acknowledgment number,
+     *   and window size are set in the segment header.
+     * - The updated segments are pushed to the `_segments_out` queue, ready for transmission.
+     * @note
+     * Ensuring data flow synchronization in the TCP protocol. The appended ACK and window size inform the peer of the current 
+     * receive state.
+     */
+    void flush_segments_with_ack();
 
   public:
     //! \name "Input" interface for the writer
