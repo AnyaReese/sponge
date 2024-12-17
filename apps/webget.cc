@@ -1,4 +1,5 @@
-#include "socket.hh"
+// #include "socket.hh"
+#include "tcp_sponge_socket.hh"
 #include "util.hh"
 
 #include <cstdlib>
@@ -14,7 +15,8 @@ void get_URL(const string &host, const string &path) {
     // then request the URL path given in the "path" string.
     
     // 创建一个TCP套接字并连接到指定的主机和HTTP服务
-    TCPSocket sock;
+    // TCPSocket sock;
+    FullStackSocket sock;
     sock.connect(Address(host, "http"));
 
     // 发送HTTP GET请求
@@ -30,6 +32,7 @@ void get_URL(const string &host, const string &path) {
 
     // 关闭套接字连接
     sock.close();
+    sock.wait_until_closed();
 
     // Then you'll need to print out everything the server sends back,
     // (not just one call to read() -- everything) until you reach
